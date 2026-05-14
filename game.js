@@ -28,27 +28,34 @@ let player = {
     invincible: 0
 };
 
-// ========== ПОЛИГОНЫ (ФИГУРЫ) ==========
+// ========== СПРАЙТЫ ТАНКОВ ==========
+const tankSprites = {
+    basic: null,
+    twin: null,
+    sniper: null
+};
+
+function loadTankSprites() {
+    tankSprites.basic = new Image();
+    tankSprites.basic.src = 'assets/tanks/basic.png';
+    
+    tankSprites.twin = new Image();
+    tankSprites.twin.src = 'assets/tanks/twin.png';
+    
+    tankSprites.sniper = new Image();
+    tankSprites.sniper.src = 'assets/tanks/sniper.png';
+}
+
+// ========== ПОЛИГОНЫ ==========
 let polygons = [];
 const POLYGON_COUNT = 50;
 
-// Цвета и размеры: пентагон в 2.5 раза больше квадрата
 const POLYGON_TYPES = {
-    square: {
-        name: 'Квадрат', hp: 10, maxHp: 10, xp: 10,
-        radius: 12, color: '#4CAF50', bodyDamage: 8
-    },
-    triangle: {
-        name: 'Треугольник', hp: 30, maxHp: 30, xp: 25,
-        radius: 15, color: '#FF69B4', bodyDamage: 8
-    },
-    pentagon: {
-        name: 'Пентагон', hp: 100, maxHp: 100, xp: 130,
-        radius: 32, color: '#8B5CF6', bodyDamage: 12  // в 2.5 раза больше квадрата (12*2.5=30 ≈32)
-    }
+    square: { name: 'Квадрат', hp: 10, maxHp: 10, xp: 10, radius: 12, color: '#4CAF50', bodyDamage: 8 },
+    triangle: { name: 'Треугольник', hp: 30, maxHp: 30, xp: 25, radius: 15, color: '#FF69B4', bodyDamage: 8 },
+    pentagon: { name: 'Пентагон', hp: 100, maxHp: 100, xp: 130, radius: 32, color: '#8B5CF6', bodyDamage: 12 }
 };
 
-// Спрайты полигонов
 const polygonSprites = {
     square: null,
     triangle: null,
@@ -58,10 +65,8 @@ const polygonSprites = {
 function loadPolygonSprites() {
     polygonSprites.square = new Image();
     polygonSprites.square.src = 'assets/polygons/square.png';
-    
     polygonSprites.triangle = new Image();
     polygonSprites.triangle.src = 'assets/polygons/triangle.png';
-    
     polygonSprites.pentagon = new Image();
     polygonSprites.pentagon.src = 'assets/polygons/pentagon.png';
 }
@@ -87,9 +92,9 @@ function spawnPolygons() {
     polygons = [];
     for (let i = 0; i < POLYGON_COUNT; i++) {
         let rand = Math.random();
-        if (rand < 0.6) spawnPolygon('square');      // 60% квадраты
-        else if (rand < 0.85) spawnPolygon('triangle'); // 25% треугольники
-        else spawnPolygon('pentagon');                 // 15% пентагоны
+        if (rand < 0.6) spawnPolygon('square');
+        else if (rand < 0.85) spawnPolygon('triangle');
+        else spawnPolygon('pentagon');
     }
 }
 
@@ -121,9 +126,8 @@ function spawnEnemy() {
 // ========== КЛАССЫ ТАНКОВ ==========
 const CLASSES = {
     basic: { damage: 12, reload: 0.8, bulletSpeed: 9, bulletRadius: 6, bulletCount: 1, bulletColor: '#ffaa66' },
-    machine: { damage: 7, reload: 0.25, bulletSpeed: 10, bulletRadius: 5, bulletCount: 1, bulletColor: '#ffcc44' },
-    destroyer: { damage: 45, reload: 2.0, bulletSpeed: 8, bulletRadius: 14, bulletCount: 1, bulletColor: '#ff6644' },
-    sniper: { damage: 30, reload: 1.5, bulletSpeed: 14, bulletRadius: 7, bulletCount: 1, bulletColor: '#ff8888' }
+    twin: { damage: 10, reload: 0.5, bulletSpeed: 9, bulletRadius: 5, bulletCount: 2, bulletColor: '#ffaa66' },
+    sniper: { damage: 35, reload: 1.5, bulletSpeed: 14, bulletRadius: 7, bulletCount: 1, bulletColor: '#ff8888' }
 };
 
 function applyClassStats() {
@@ -144,7 +148,8 @@ function shoot() {
     player.lastShot = now;
     
     for (let i = 0; i < player.bulletCount; i++) {
-        let angle = player.angle + (i - (player.bulletCount-1)/2) * 0.1;
+        let spread = (i - (player.bulletCount-1)/2) * 0.1;
+        let angle = player.angle + spread;
         bullets.push({
             x: player.x + Math.cos(player.angle) * (player.radius + 8),
             y: player.y + Math.sin(player.angle) * (player.radius + 8),
@@ -199,7 +204,7 @@ function handleInput() {
     if (player.invincible > 0) player.invincible--;
 }
 
-// ========== СТОЛКНОВЕНИЯ ПУЛЬ С ПОЛИГОНАМИ ==========
+// ========== СТОЛКНОВЕНИЯ ==========
 function updateBullets() {
     for (let i = 0; i < bullets.length; i++) {
         let b = bullets[i];
@@ -221,12 +226,9 @@ function updateBullets() {
                 p.hp -= b.damage;
                 hit = true;
                 addParticle(p.x, p.y, '#ffaa66');
-                
                 if (p.hp <= 0) {
-                    // Награда за уничтожение полигона
                     gainExp(p.xp);
                     polygons.splice(j, 1);
-                    // Возрождаем полигон
                     let rand = Math.random();
                     if (rand < 0.6) spawnPolygon('square');
                     else if (rand < 0.85) spawnPolygon('triangle');
@@ -262,7 +264,6 @@ function updateBullets() {
     }
 }
 
-// ========== ВРАГИ АТАКУЮТ ==========
 function updateEnemies() {
     for (let e of enemies) {
         let dx = player.x - e.x;
@@ -274,7 +275,6 @@ function updateEnemies() {
             e.y += Math.sin(ang) * e.speed;
         }
         
-        // Стрельба врагов
         const now = Date.now() / 1000;
         if (dist < 400 && now - e.lastShot > 1.2) {
             e.lastShot = now;
@@ -321,7 +321,6 @@ function gainExp(amount) {
     }
 }
 
-// ========== ПРОКАЧКА ==========
 function upgradeStat(stat) {
     if (player.statPoints <= 0) return;
     switch(stat) {
@@ -334,7 +333,15 @@ function upgradeStat(stat) {
     updateUI();
 }
 
-function changeClass(className) {
+function tryChangeClass(className) {
+    if (className === 'twin' && player.level < 15) {
+        alert('🔓 Двойная пушка откроется на 15 уровне!');
+        return;
+    }
+    if (className === 'sniper' && player.level < 15) {
+        alert('🔓 Снайпер откроется на 15 уровне!');
+        return;
+    }
     if (!CLASSES[className]) return;
     player.class = className;
     applyClassStats();
@@ -383,13 +390,55 @@ function updateCamera() {
     camera.y = Math.min(Math.max(camera.y, 0), WORLD_SIZE - height);
 }
 
-// ========== ОТРИСОВКА ==========
-function draw() {
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#1a2a2a';
-    ctx.fillRect(0, 0, width, height);
+// ========== ОТРИСОВКА ИГРОКА (со спрайтами) ==========
+function drawPlayer() {
+    let screenX = player.x - camera.x;
+    let screenY = player.y - camera.y;
     
-    // Полигоны (с использованием спрайтов)
+    let spriteName = player.class;
+    if (!tankSprites[spriteName]) spriteName = 'basic';
+    
+    const img = tankSprites[spriteName];
+    
+    if (img && img.complete && img.naturalWidth > 0) {
+        const size = player.radius * 2.5;
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        ctx.rotate(player.angle);
+        ctx.drawImage(img, -size/2, -size/2, size, size);
+        ctx.restore();
+    } else {
+        // Запасной вариант (если спрайт не загрузился)
+        ctx.fillStyle = '#00B2E1';
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        let barrelX = player.x + Math.cos(player.angle) * player.radius;
+        let barrelY = player.y + Math.sin(player.angle) * player.radius;
+        ctx.beginPath();
+        ctx.moveTo(screenX, screenY);
+        ctx.lineTo(barrelX - camera.x, barrelY - camera.y);
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = '#666666';
+        ctx.stroke();
+    }
+    
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(player.name, screenX - 25, screenY - 18);
+    ctx.fillStyle = '#ffaa66';
+    ctx.fillText(`Lv.${player.level}`, screenX - 15, screenY - 28);
+    
+    let hpPercent = player.hp / player.maxHp;
+    ctx.fillStyle = '#8a3a3a';
+    ctx.fillRect(screenX - 25, screenY - 35, 50, 6);
+    ctx.fillStyle = '#ffaa44';
+    ctx.fillRect(screenX - 25, screenY - 35, 50 * hpPercent, 6);
+}
+
+// ========== ОТРИСОВКА ПОЛИГОНОВ ==========
+function drawPolygons() {
     for (let p of polygons) {
         let screenX = p.x - camera.x;
         let screenY = p.y - camera.y;
@@ -399,7 +448,6 @@ function draw() {
             const size = p.radius * 2;
             ctx.drawImage(img, screenX - p.radius, screenY - p.radius, size, size);
         } else {
-            // Запасной вариант (цветные фигуры)
             ctx.fillStyle = p.color;
             if (p.type === 'square') {
                 ctx.fillRect(screenX - p.radius, screenY - p.radius, p.radius*2, p.radius*2);
@@ -416,15 +464,22 @@ function draw() {
             }
         }
         
-        // Полоска HP
         let percent = p.hp / p.maxHp;
         ctx.fillStyle = '#aa4444';
         ctx.fillRect(screenX - p.radius - 2, screenY - p.radius - 8, p.radius*2 + 4, 4);
         ctx.fillStyle = '#44aa44';
         ctx.fillRect(screenX - p.radius - 2, screenY - p.radius - 8, (p.radius*2 + 4) * percent, 4);
     }
+}
+
+// ========== ОТРИСОВКА ==========
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#1a2a2a';
+    ctx.fillRect(0, 0, width, height);
     
-    // Враги
+    drawPolygons();
+    
     for (let e of enemies) {
         let screenX = e.x - camera.x;
         let screenY = e.y - camera.y;
@@ -439,7 +494,6 @@ function draw() {
         ctx.fillRect(screenX - 15, screenY - 20, 30 * percent, 5);
     }
     
-    // Пули
     for (let b of bullets) {
         let screenX = b.x - camera.x;
         let screenY = b.y - camera.y;
@@ -449,37 +503,8 @@ function draw() {
         ctx.fill();
     }
     
-    // Игрок
-    let screenX = player.x - camera.x;
-    let screenY = player.y - camera.y;
-    ctx.fillStyle = '#44aa88';
-    ctx.beginPath();
-    ctx.arc(screenX, screenY, player.radius, 0, Math.PI*2);
-    ctx.fill();
+    drawPlayer();
     
-    // Пушка
-    let barrelX = player.x + Math.cos(player.angle) * player.radius;
-    let barrelY = player.y + Math.sin(player.angle) * player.radius;
-    ctx.beginPath();
-    ctx.moveTo(screenX, screenY);
-    ctx.lineTo(barrelX - camera.x, barrelY - camera.y);
-    ctx.lineWidth = 7;
-    ctx.strokeStyle = '#ccaa66';
-    ctx.stroke();
-    
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(player.name, screenX - 25, screenY - 18);
-    ctx.fillStyle = '#ffaa66';
-    ctx.fillText(`Lv.${player.level}`, screenX - 15, screenY - 28);
-    
-    let hpPercent = player.hp / player.maxHp;
-    ctx.fillStyle = '#8a3a3a';
-    ctx.fillRect(screenX - 25, screenY - 35, 50, 6);
-    ctx.fillStyle = '#ffaa44';
-    ctx.fillRect(screenX - 25, screenY - 35, 50 * hpPercent, 6);
-    
-    // Частицы
     for (let p of particles) {
         ctx.globalAlpha = p.life;
         ctx.fillStyle = p.color;
@@ -544,6 +569,7 @@ document.getElementById('playBtn').addEventListener('click', () => {
     document.getElementById('classPanel').style.display = 'flex';
     
     resize();
+    loadTankSprites();
     loadPolygonSprites();
     initGame();
     gameRunning = true;
@@ -555,5 +581,10 @@ document.querySelectorAll('.upgrade-btn').forEach(btn => {
 });
 
 document.querySelectorAll('.class-btn').forEach(btn => {
-    btn.addEventListener('click', () => changeClass(btn.dataset.class));
+    btn.addEventListener('click', () => {
+        const className = btn.dataset.class;
+        if (className === 'twin') tryChangeClass('twin');
+        else if (className === 'sniper') tryChangeClass('sniper');
+        else tryChangeClass('basic');
+    });
 });
