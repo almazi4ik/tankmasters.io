@@ -22,28 +22,113 @@ let player = {
     class: 'basic',
     damage: 12,
     reload: 0.8,
+    bulletSpeed: 9,
+    bulletRadius: 6,
+    bulletCount: 1,
     speed: 4,
+    penetration: 1,
     lastShot: 0,
     angle: 0,
     invincible: 0
 };
 
-// ========== СПРАЙТЫ ТАНКОВ ==========
-const tankSprites = {
-    basic: null,
-    twin: null,
-    sniper: null
-};
+// ========== УПРАВЛЕНИЕ (ДЖОЙСТИКИ) ==========
+let moveDirection = { x: 0, y: 0 };
+let shootDirection = { x: 1, y: 0 };
+let isShooting = false;
 
-function loadTankSprites() {
-    tankSprites.basic = new Image();
-    tankSprites.basic.src = 'assets/tanks/basic.png';
+// Левая джойстик (движение)
+const moveJoystick = document.getElementById('joystickMove');
+const moveThumb = document.getElementById('moveThumb');
+let moveActive = false;
+let moveCenter = { x: 0, y: 0 };
+
+// Правая джойстик (стрельба)
+const shootJoystick = document.getElementById('joystickShoot');
+const shootThumb = document.getElementById('shootThumb');
+let shootActive = false;
+let shootCenter = { x: 0, y: 0 };
+
+function initJoysticks() {
+    // Левая джойстик
+    moveJoystick.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        moveActive = true;
+        const rect = moveJoystick.getBoundingClientRect();
+        moveCenter.x = rect.left + rect.width/2;
+        moveCenter.y = rect.top + rect.height/2;
+        updateMoveThumb(e.touches[0]);
+    });
     
-    tankSprites.twin = new Image();
-    tankSprites.twin.src = 'assets/tanks/twin.png';
+    moveJoystick.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        updateMoveThumb(e.touches[0]);
+    });
     
-    tankSprites.sniper = new Image();
-    tankSprites.sniper.src = 'assets/tanks/sniper.png';
+    moveJoystick.addEventListener('touchend', () => {
+        moveActive = false;
+        moveDirection = { x: 0, y: 0 };
+        moveThumb.style.transform = `translate(0px, 0px)`;
+    });
+    
+    // Правая джойстик
+    shootJoystick.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        shootActive = true;
+        isShooting = true;
+        const rect = shootJoystick.getBoundingClientRect();
+        shootCenter.x = rect.left + rect.width/2;
+        shootCenter.y = rect.top + rect.height/2;
+        updateShootThumb(e.touches[0]);
+    });
+    
+    shootJoystick.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        updateShootThumb(e.touches[0]);
+    });
+    
+    shootJoystick.addEventListener('touchend', () => {
+        shootActive = false;
+        isShooting = false;
+        shootDirection = { x: 1, y: 0 };
+        shootThumb.style.transform = `translate(0px, 0px)`;
+    });
+}
+
+function updateMoveThumb(touch) {
+    const rect = moveJoystick.getBoundingClientRect();
+    const centerX = rect.left + rect.width/2;
+    const centerY = rect.top + rect.height/2;
+    let dx = touch.clientX - centerX;
+    let dy = touch.clientY - centerY;
+    const maxDist = rect.width/2 - 30;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxDist) {
+        dx = dx / dist * maxDist;
+        dy = dy / dist * maxDist;
+    }
+    moveThumb.style.transform = `translate(${dx}px, ${dy}px)`;
+    moveDirection.x = dx / maxDist;
+    moveDirection.y = dy / maxDist;
+}
+
+function updateShootThumb(touch) {
+    const rect = shootJoystick.getBoundingClientRect();
+    const centerX = rect.left + rect.width/2;
+    const centerY = rect.top + rect.height/2;
+    let dx = touch.clientX - centerX;
+    let dy = touch.clientY - centerY;
+    const maxDist = rect.width/2 - 30;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxDist) {
+        dx = dx / dist * maxDist;
+        dy = dy / dist * maxDist;
+    }
+    shootThumb.style.transform = `translate(${dx}px, ${dy}px)`;
+    if (dist > 5) {
+        shootDirection.x = dx / maxDist;
+        shootDirection.y = dy / maxDist;
+    }
 }
 
 // ========== ПОЛИГОНЫ ==========
@@ -51,25 +136,10 @@ let polygons = [];
 const POLYGON_COUNT = 50;
 
 const POLYGON_TYPES = {
-    square: { name: 'Квадрат', hp: 10, maxHp: 10, xp: 10, radius: 12, color: '#4CAF50', bodyDamage: 8 },
-    triangle: { name: 'Треугольник', hp: 30, maxHp: 30, xp: 25, radius: 15, color: '#FF69B4', bodyDamage: 8 },
-    pentagon: { name: 'Пентагон', hp: 100, maxHp: 100, xp: 130, radius: 32, color: '#8B5CF6', bodyDamage: 12 }
+    square: { name: 'Квадрат', hp: 10, maxHp: 10, xp: 10, radius: 12, color: '#4CAF50' },
+    triangle: { name: 'Треугольник', hp: 30, maxHp: 30, xp: 25, radius: 15, color: '#FF69B4' },
+    pentagon: { name: 'Пентагон', hp: 100, maxHp: 100, xp: 130, radius: 32, color: '#8B5CF6' }
 };
-
-const polygonSprites = {
-    square: null,
-    triangle: null,
-    pentagon: null
-};
-
-function loadPolygonSprites() {
-    polygonSprites.square = new Image();
-    polygonSprites.square.src = 'assets/polygons/square.png';
-    polygonSprites.triangle = new Image();
-    polygonSprites.triangle.src = 'assets/polygons/triangle.png';
-    polygonSprites.pentagon = new Image();
-    polygonSprites.pentagon.src = 'assets/polygons/pentagon.png';
-}
 
 function spawnPolygon(type, x, y) {
     const data = POLYGON_TYPES[type];
@@ -83,8 +153,7 @@ function spawnPolygon(type, x, y) {
         xp: data.xp,
         color: data.color,
         vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        bodyDamage: data.bodyDamage
+        vy: (Math.random() - 0.5) * 0.5
     });
 }
 
@@ -112,14 +181,10 @@ function spawnEnemy() {
     else { x = -50; y = Math.random() * WORLD_SIZE; }
     
     enemies.push({
-        x: x, y: y,
-        radius: 16,
+        x, y, radius: 16,
         hp: 40 + player.level * 3,
         maxHp: 40 + player.level * 3,
-        damage: 10,
-        speed: 1.3,
-        lastShot: 0,
-        color: '#cc5555'
+        damage: 10, speed: 1.3, lastShot: 0, color: '#cc5555'
     });
 }
 
@@ -147,14 +212,16 @@ function shoot() {
     if (now - player.lastShot < player.reload) return;
     player.lastShot = now;
     
+    const angle = Math.atan2(shootDirection.y, shootDirection.x);
+    
     for (let i = 0; i < player.bulletCount; i++) {
         let spread = (i - (player.bulletCount-1)/2) * 0.1;
-        let angle = player.angle + spread;
+        let bulletAngle = angle + spread;
         bullets.push({
-            x: player.x + Math.cos(player.angle) * (player.radius + 8),
-            y: player.y + Math.sin(player.angle) * (player.radius + 8),
-            vx: Math.cos(angle) * player.bulletSpeed,
-            vy: Math.sin(angle) * player.bulletSpeed,
+            x: player.x + Math.cos(angle) * (player.radius + 8),
+            y: player.y + Math.sin(angle) * (player.radius + 8),
+            vx: Math.cos(bulletAngle) * player.bulletSpeed,
+            vy: Math.sin(bulletAngle) * player.bulletSpeed,
             radius: player.bulletRadius,
             damage: player.damage,
             color: player.bulletColor
@@ -162,43 +229,25 @@ function shoot() {
     }
 }
 
-// ========== УПРАВЛЕНИЕ ==========
-let mouseX = player.x, mouseY = player.y;
-let isShooting = false;
-
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    let canvasX = (e.clientX - rect.left) * (width / rect.width);
-    let canvasY = (e.clientY - rect.top) * (height / rect.height);
-    mouseX = camera.x + canvasX;
-    mouseY = camera.y + canvasY;
-    mouseX = Math.min(Math.max(mouseX, 0), WORLD_SIZE);
-    mouseY = Math.min(Math.max(mouseY, 0), WORLD_SIZE);
-});
-
-canvas.addEventListener('mousedown', (e) => {
-    if (e.button === 0 || e.button === 2) {
-        isShooting = true;
-        e.preventDefault();
-    }
-});
-canvas.addEventListener('mouseup', () => { isShooting = false; });
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
+// ========== ДВИЖЕНИЕ ==========
 function handleInput() {
-    player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+    // Движение от джойстика
+    if (moveActive && (moveDirection.x !== 0 || moveDirection.y !== 0)) {
+        player.x += moveDirection.x * player.speed;
+        player.y += moveDirection.y * player.speed;
+    }
+    
+    // Стрельба
     if (isShooting) shoot();
     
-    let dx = mouseX - player.x;
-    let dy = mouseY - player.y;
-    let dist = Math.hypot(dx, dy);
-    if (dist > 35) {
-        let move = Math.min(player.speed, dist - 30);
-        let ang = Math.atan2(dy, dx);
-        player.x += Math.cos(ang) * move;
-        player.y += Math.sin(ang) * move;
+    // Угол поворота пушки (по правому джойстику)
+    if (shootActive && (shootDirection.x !== 0 || shootDirection.y !== 0)) {
+        player.angle = Math.atan2(shootDirection.y, shootDirection.x);
+    } else if (moveActive && (moveDirection.x !== 0 || moveDirection.y !== 0)) {
+        player.angle = Math.atan2(moveDirection.y, moveDirection.x);
     }
     
+    // Границы мира
     player.x = Math.min(Math.max(player.x, player.radius), WORLD_SIZE - player.radius);
     player.y = Math.min(Math.max(player.y, player.radius), WORLD_SIZE - player.radius);
     if (player.invincible > 0) player.invincible--;
@@ -221,9 +270,8 @@ function updateBullets() {
         // Попадание в полигоны
         for (let j = 0; j < polygons.length; j++) {
             let p = polygons[j];
-            let dist = Math.hypot(b.x - p.x, b.y - p.y);
-            if (dist < b.radius + p.radius) {
-                p.hp -= b.damage;
+            if (Math.hypot(b.x - p.x, b.y - p.y) < b.radius + p.radius) {
+                p.hp -= b.damage * player.penetration;
                 hit = true;
                 addParticle(p.x, p.y, '#ffaa66');
                 if (p.hp <= 0) {
@@ -242,8 +290,7 @@ function updateBullets() {
         // Попадание во врагов
         for (let j = 0; j < enemies.length; j++) {
             let e = enemies[j];
-            let dist = Math.hypot(b.x - e.x, b.y - e.y);
-            if (dist < b.radius + e.radius) {
+            if (Math.hypot(b.x - e.x, b.y - e.y) < b.radius + e.radius) {
                 e.hp -= b.damage;
                 hit = true;
                 addParticle(e.x, e.y, '#ff8888');
@@ -284,9 +331,7 @@ function updateEnemies() {
                 y: e.y + Math.sin(angle) * e.radius,
                 vx: Math.cos(angle) * 6,
                 vy: Math.sin(angle) * 6,
-                radius: 5,
-                damage: 8,
-                color: '#ff8866'
+                radius: 5, damage: 8, color: '#ff8866'
             });
         }
         
@@ -321,41 +366,30 @@ function gainExp(amount) {
     }
 }
 
+// ========== ПРОКАЧКА ==========
 function upgradeStat(stat) {
     if (player.statPoints <= 0) return;
     switch(stat) {
         case 'damage': player.damage += 2; break;
         case 'reload': player.reload = Math.max(0.15, player.reload - 0.08); break;
         case 'speed': player.speed = Math.min(9, player.speed + 0.3); break;
+        case 'penetration': player.penetration += 0.5; break;
         case 'maxHp': player.maxHp += 10; player.hp += 10; break;
     }
     player.statPoints--;
     updateUI();
 }
 
-function tryChangeClass(className) {
-    if (className === 'twin' && player.level < 15) {
-        alert('🔓 Двойная пушка откроется на 15 уровне!');
-        return;
-    }
-    if (className === 'sniper' && player.level < 15) {
-        alert('🔓 Снайпер откроется на 15 уровне!');
-        return;
-    }
-    if (!CLASSES[className]) return;
-    player.class = className;
-    applyClassStats();
-    updateUI();
-    addParticle(player.x, player.y, '#88ffaa');
-}
-
 function updateUI() {
-    document.getElementById('playerName').innerText = player.name;
-    document.getElementById('level').innerText = player.level;
-    document.getElementById('hp').innerText = Math.floor(player.hp);
-    document.getElementById('damageStat').innerText = player.damage;
-    document.getElementById('reloadStat').innerText = player.reload.toFixed(2);
-    document.getElementById('statPoints').innerHTML = ` (🔧 ${player.statPoints} очков)`;
+    document.getElementById('levelValue').innerHTML = player.level;
+    document.getElementById('hpValue').innerHTML = Math.floor(player.hp);
+    document.getElementById('damageStat').innerHTML = player.damage;
+    document.getElementById('reloadStat').innerHTML = player.reload.toFixed(2);
+    document.getElementById('skillPointsDisplay').innerHTML = `🔧 Очки: ${player.statPoints}`;
+    
+    // Таблица лидеров (простая версия)
+    const leaderboardDiv = document.getElementById('leaderboardList');
+    leaderboardDiv.innerHTML = `1. ${player.name} — ${player.exp} XP`;
 }
 
 // ========== ЭФФЕКТЫ ==========
@@ -367,7 +401,7 @@ function addParticle(x, y, color) {
             vx: (Math.random() - 0.5) * 3,
             vy: (Math.random() - 0.5) * 3 - 1,
             life: 0.7,
-            color: color
+            color
         });
     }
 }
@@ -390,86 +424,40 @@ function updateCamera() {
     camera.y = Math.min(Math.max(camera.y, 0), WORLD_SIZE - height);
 }
 
-// ========== ОТРИСОВКА ИГРОКА (со спрайтами) ==========
-function drawPlayer() {
-    let screenX = player.x - camera.x;
-    let screenY = player.y - camera.y;
-    
-    let spriteName = player.class;
-    if (!tankSprites[spriteName]) spriteName = 'basic';
-    
-    const img = tankSprites[spriteName];
-    
-    if (img && img.complete && img.naturalWidth > 0) {
-        const size = player.radius * 2.5;
-        ctx.save();
-        ctx.translate(screenX, screenY);
-        ctx.rotate(player.angle);
-        ctx.drawImage(img, -size/2, -size/2, size, size);
-        ctx.restore();
-    } else {
-        // Запасной вариант (если спрайт не загрузился)
-        ctx.fillStyle = '#00B2E1';
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, player.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        let barrelX = player.x + Math.cos(player.angle) * player.radius;
-        let barrelY = player.y + Math.sin(player.angle) * player.radius;
-        ctx.beginPath();
-        ctx.moveTo(screenX, screenY);
-        ctx.lineTo(barrelX - camera.x, barrelY - camera.y);
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#666666';
-        ctx.stroke();
-    }
-    
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(player.name, screenX - 25, screenY - 18);
-    ctx.fillStyle = '#ffaa66';
-    ctx.fillText(`Lv.${player.level}`, screenX - 15, screenY - 28);
-    
-    let hpPercent = player.hp / player.maxHp;
-    ctx.fillStyle = '#8a3a3a';
-    ctx.fillRect(screenX - 25, screenY - 35, 50, 6);
-    ctx.fillStyle = '#ffaa44';
-    ctx.fillRect(screenX - 25, screenY - 35, 50 * hpPercent, 6);
-}
+// ========== МИНИ-КАРТА ==========
+const minimapCanvas = document.getElementById('minimapCanvas');
+const minimapCtx = minimapCanvas.getContext('2d');
+const MINIMAP_SIZE = 120;
 
-// ========== ОТРИСОВКА ПОЛИГОНОВ ==========
-function drawPolygons() {
+function drawMinimap() {
+    minimapCtx.fillStyle = 'rgba(0,0,0,0.7)';
+    minimapCtx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
+    
+    // Масштабирование
+    const scale = MINIMAP_SIZE / WORLD_SIZE;
+    
+    // Полигоны на мини-карте
     for (let p of polygons) {
-        let screenX = p.x - camera.x;
-        let screenY = p.y - camera.y;
-        const img = polygonSprites[p.type];
-        
-        if (img && img.complete && img.naturalWidth > 0) {
-            const size = p.radius * 2;
-            ctx.drawImage(img, screenX - p.radius, screenY - p.radius, size, size);
-        } else {
-            ctx.fillStyle = p.color;
-            if (p.type === 'square') {
-                ctx.fillRect(screenX - p.radius, screenY - p.radius, p.radius*2, p.radius*2);
-            } else if (p.type === 'triangle') {
-                ctx.beginPath();
-                ctx.moveTo(screenX, screenY - p.radius);
-                ctx.lineTo(screenX - p.radius, screenY + p.radius);
-                ctx.lineTo(screenX + p.radius, screenY + p.radius);
-                ctx.fill();
-            } else {
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, p.radius, 0, Math.PI*2);
-                ctx.fill();
-            }
-        }
-        
-        let percent = p.hp / p.maxHp;
-        ctx.fillStyle = '#aa4444';
-        ctx.fillRect(screenX - p.radius - 2, screenY - p.radius - 8, p.radius*2 + 4, 4);
-        ctx.fillStyle = '#44aa44';
-        ctx.fillRect(screenX - p.radius - 2, screenY - p.radius - 8, (p.radius*2 + 4) * percent, 4);
+        minimapCtx.fillStyle = p.color;
+        minimapCtx.fillRect(p.x * scale - 2, p.y * scale - 2, 4, 4);
     }
+    
+    // Враги
+    for (let e of enemies) {
+        minimapCtx.fillStyle = '#ff6666';
+        minimapCtx.fillRect(e.x * scale - 2, e.y * scale - 2, 4, 4);
+    }
+    
+    // Игрок
+    minimapCtx.fillStyle = '#00B2E1';
+    minimapCtx.beginPath();
+    minimapCtx.arc(player.x * scale, player.y * scale, 4, 0, Math.PI*2);
+    minimapCtx.fill();
+    
+    // Обводка
+    minimapCtx.strokeStyle = '#ffaa44';
+    minimapCtx.lineWidth = 2;
+    minimapCtx.strokeRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE);
 }
 
 // ========== ОТРИСОВКА ==========
@@ -478,8 +466,33 @@ function draw() {
     ctx.fillStyle = '#1a2a2a';
     ctx.fillRect(0, 0, width, height);
     
-    drawPolygons();
+    // Полигоны
+    for (let p of polygons) {
+        let screenX = p.x - camera.x;
+        let screenY = p.y - camera.y;
+        ctx.fillStyle = p.color;
+        if (p.type === 'square') {
+            ctx.fillRect(screenX - p.radius, screenY - p.radius, p.radius*2, p.radius*2);
+        } else if (p.type === 'triangle') {
+            ctx.beginPath();
+            ctx.moveTo(screenX, screenY - p.radius);
+            ctx.lineTo(screenX - p.radius, screenY + p.radius);
+            ctx.lineTo(screenX + p.radius, screenY + p.radius);
+            ctx.fill();
+        } else {
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, p.radius, 0, Math.PI*2);
+            ctx.fill();
+        }
+        
+        let percent = p.hp / p.maxHp;
+        ctx.fillStyle = '#aa4444';
+        ctx.fillRect(screenX - p.radius - 2, screenY - p.radius - 8, p.radius*2 + 4, 4);
+        ctx.fillStyle = '#44aa44';
+        ctx.fillRect(screenX - p.radius - 2, screenY - p.radius - 8, (p.radius*2 + 4) * percent, 4);
+    }
     
+    // Враги
     for (let e of enemies) {
         let screenX = e.x - camera.x;
         let screenY = e.y - camera.y;
@@ -494,6 +507,7 @@ function draw() {
         ctx.fillRect(screenX - 15, screenY - 20, 30 * percent, 5);
     }
     
+    // Пули
     for (let b of bullets) {
         let screenX = b.x - camera.x;
         let screenY = b.y - camera.y;
@@ -503,8 +517,40 @@ function draw() {
         ctx.fill();
     }
     
-    drawPlayer();
+    // Игрок
+    let screenX = player.x - camera.x;
+    let screenY = player.y - camera.y;
+    ctx.fillStyle = '#00B2E1';
+    ctx.beginPath();
+    ctx.arc(screenX, screenY, player.radius, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#0088AA';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     
+    // Пушка
+    let barrelX = player.x + Math.cos(player.angle) * player.radius;
+    let barrelY = player.y + Math.sin(player.angle) * player.radius;
+    ctx.beginPath();
+    ctx.moveTo(screenX, screenY);
+    ctx.lineTo(barrelX - camera.x, barrelY - camera.y);
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#888888';
+    ctx.stroke();
+    
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(player.name, screenX - 25, screenY - 18);
+    ctx.fillStyle = '#ffaa66';
+    ctx.fillText(`Lv.${player.level}`, screenX - 15, screenY - 28);
+    
+    let hpPercent = player.hp / player.maxHp;
+    ctx.fillStyle = '#8a3a3a';
+    ctx.fillRect(screenX - 25, screenY - 35, 50, 6);
+    ctx.fillStyle = '#ffaa44';
+    ctx.fillRect(screenX - 25, screenY - 35, 50 * hpPercent, 6);
+    
+    // Частицы
     for (let p of particles) {
         ctx.globalAlpha = p.life;
         ctx.fillStyle = p.color;
@@ -513,6 +559,9 @@ function draw() {
         ctx.fill();
     }
     ctx.globalAlpha = 1;
+    
+    // Мини-карта
+    drawMinimap();
 }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
@@ -556,6 +605,8 @@ function resize() {
     height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
+    minimapCanvas.width = MINIMAP_SIZE;
+    minimapCanvas.height = MINIMAP_SIZE;
 }
 window.addEventListener('resize', resize);
 
@@ -564,13 +615,16 @@ document.getElementById('playBtn').addEventListener('click', () => {
     let nick = document.getElementById('nickInput').value.trim();
     if (nick) player.name = nick;
     document.getElementById('menu').style.display = 'none';
-    document.getElementById('gameUI').style.display = 'block';
+    document.getElementById('joystickMove').style.display = 'block';
+    document.getElementById('joystickShoot').style.display = 'block';
     document.getElementById('upgradePanel').style.display = 'flex';
-    document.getElementById('classPanel').style.display = 'flex';
+    document.getElementById('skillPointsDisplay').style.display = 'block';
+    document.getElementById('statsPanel').style.display = 'block';
+    document.getElementById('leaderboard').style.display = 'block';
+    document.getElementById('minimap').style.display = 'block';
     
     resize();
-    loadTankSprites();
-    loadPolygonSprites();
+    initJoysticks();
     initGame();
     gameRunning = true;
     gameLoop();
@@ -578,13 +632,8 @@ document.getElementById('playBtn').addEventListener('click', () => {
 
 document.querySelectorAll('.upgrade-btn').forEach(btn => {
     btn.addEventListener('click', () => upgradeStat(btn.dataset.stat));
-});
-
-document.querySelectorAll('.class-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const className = btn.dataset.class;
-        if (className === 'twin') tryChangeClass('twin');
-        else if (className === 'sniper') tryChangeClass('sniper');
-        else tryChangeClass('basic');
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        upgradeStat(btn.dataset.stat);
     });
 });
