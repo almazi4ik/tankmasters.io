@@ -2,37 +2,44 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TankMasters.io — танки, пушки, полигоны</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TankMasters.io — мобильный танковый шутер</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
         body {
             background: #0a0f1a;
             overflow: hidden;
             font-family: 'Segoe UI', system-ui, monospace;
+            touch-action: none;
         }
         
         canvas {
             display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             cursor: crosshair;
         }
         
-        /* Меню */
+        /* МЕНЮ */
         #menu {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.92);
+            background: rgba(0,0,0,0.95);
             backdrop-filter: blur(10px);
-            z-index: 100;
+            z-index: 200;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -41,14 +48,15 @@
         .menu-card {
             background: linear-gradient(145deg, #1a2a3a, #0a121f);
             border-radius: 40px;
-            padding: 40px 50px;
+            padding: 40px 30px;
             text-align: center;
             border: 2px solid #ffaa44;
             box-shadow: 0 0 50px rgba(255,170,68,0.3);
+            max-width: 90%;
         }
         
         h1 {
-            font-size: 48px;
+            font-size: 8vw;
             background: linear-gradient(135deg, #ffaa44, #ff6644);
             -webkit-background-clip: text;
             background-clip: text;
@@ -56,19 +64,14 @@
             margin-bottom: 10px;
         }
         
-        .sub {
-            color: #88aacc;
-            margin-bottom: 30px;
-        }
-        
         .nick-input {
             background: #0a0f1e;
             border: 2px solid #ffaa44;
             padding: 12px 20px;
-            font-size: 18px;
+            font-size: 16px;
             color: #ffcc88;
             border-radius: 40px;
-            width: 250px;
+            width: 80%;
             text-align: center;
             outline: none;
             margin: 20px 0;
@@ -82,87 +85,178 @@
             font-weight: bold;
             border-radius: 40px;
             cursor: pointer;
-            transition: 0.2s;
         }
         
-        .play-btn:hover { transform: scale(1.05); }
-        
-        /* UI */
-        #gameUI {
+        /* МОБИЛЬНЫЙ ИНТЕРФЕЙС (ДЖОЙСТИКИ) */
+        .joystick {
             position: fixed;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            justify-content: space-between;
-            pointer-events: none;
-            z-index: 10;
-        }
-        
-        .stats {
-            background: rgba(0,0,0,0.7);
+            width: 140px;
+            height: 140px;
+            border-radius: 70px;
+            background: rgba(30,40,60,0.4);
             backdrop-filter: blur(8px);
-            padding: 10px 20px;
-            border-radius: 30px;
-            color: #ffdd99;
-            font-size: 14px;
+            border: 2px solid rgba(255,170,68,0.5);
+            z-index: 50;
+            touch-action: none;
         }
         
+        .joystick-base {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 70px;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .joystick-thumb {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: rgba(255,170,68,0.8);
+            top: 40px;
+            left: 40px;
+            transition: 0.05s linear;
+        }
+        
+        #joystickMove {
+            bottom: 30px;
+            left: 30px;
+        }
+        
+        #joystickShoot {
+            bottom: 30px;
+            right: 30px;
+        }
+        
+        /* ВЕРХНЯЯ ПАНЕЛЬ ПРОКАЧКИ */
         .upgrade-panel {
             position: fixed;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
             backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 15px 20px;
+            border-radius: 20px;
+            padding: 8px 12px;
             display: flex;
-            justify-content: center;
-            gap: 15px;
             flex-wrap: wrap;
-            z-index: 10;
+            justify-content: center;
+            gap: 6px;
+            z-index: 40;
             pointer-events: auto;
         }
         
         .upgrade-btn {
             background: #2a3a4a;
             border: none;
-            padding: 8px 16px;
-            border-radius: 30px;
+            padding: 6px 10px;
+            border-radius: 20px;
             color: #ffcc88;
+            font-size: 10px;
+            font-weight: bold;
             cursor: pointer;
+        }
+        
+        .upgrade-btn[data-stat="speed"] { border-left: 3px solid #88ff88; }
+        .upgrade-btn[data-stat="reload"] { border-left: 3px solid #ffaa44; }
+        .upgrade-btn[data-stat="damage"] { border-left: 3px solid #ff6644; }
+        .upgrade-btn[data-stat="penetration"] { border-left: 3px solid #ff44ff; }
+        .upgrade-btn[data-stat="maxHp"] { border-left: 3px solid #44ff44; }
+        
+        /* МИНИ-КАРТА */
+        .minimap {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 12px;
+            border: 2px solid #ffaa44;
+            z-index: 45;
+            pointer-events: none;
+        }
+        
+        .minimap canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+        }
+        
+        /* ТАБЛИЦА ЛИДЕРОВ */
+        .leaderboard {
+            position: fixed;
+            top: 100px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 8px 12px;
+            min-width: 130px;
+            z-index: 40;
+            pointer-events: none;
+            font-size: 11px;
+            color: #ffdd99;
+            border: 1px solid #ffaa44;
+        }
+        
+        .leaderboard h4 {
+            font-size: 10px;
+            margin-bottom: 5px;
+            text-align: center;
+            color: #ffaa44;
+        }
+        
+        .leaderboard div {
+            font-family: monospace;
+        }
+        
+        /* ИНФО ПАНЕЛЬ */
+        .stats-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 11px;
+            color: #ffdd99;
+            z-index: 40;
+            pointer-events: none;
+            text-align: right;
+        }
+        
+        .skill-points {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #ffaa44;
+            z-index: 40;
+            pointer-events: none;
             font-weight: bold;
         }
         
-        .upgrade-btn:hover { background: #ffaa44; color: #1a1a2e; }
-        
-        .class-panel {
-            position: fixed;
-            top: 100px;
-            right: 15px;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 20px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            z-index: 10;
-            pointer-events: auto;
+        @media (max-width: 700px) {
+            .joystick { width: 110px; height: 110px; }
+            .joystick-thumb { width: 45px; height: 45px; top: 32.5px; left: 32.5px; }
+            .minimap { width: 90px; height: 90px; }
+            .upgrade-btn { font-size: 8px; padding: 4px 8px; }
+            .leaderboard { font-size: 9px; min-width: 100px; top: 80px; }
         }
         
-        .class-btn {
-            background: #2a3a4a;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 20px;
-            color: #ffcc88;
-            cursor: pointer;
-            font-size: 11px;
+        @media (max-width: 500px) {
+            .joystick { width: 90px; height: 90px; }
+            .joystick-thumb { width: 38px; height: 38px; top: 26px; left: 26px; }
+            .upgrade-btn { font-size: 7px; padding: 3px 6px; }
         }
-        
-        .class-btn.active { background: #ffaa44; color: black; }
     </style>
 </head>
 <body>
@@ -170,35 +264,52 @@
 <div id="menu">
     <div class="menu-card">
         <h1>⚡ TANKMASTERS.IO ⚡</h1>
-        <div class="sub">танки • пушки • полигоны</div>
+        <div style="color:#8aaacc; margin-bottom:20px;">два джойстика • прокачка • полигоны</div>
         <input type="text" id="nickInput" class="nick-input" placeholder="ИМЯ ТАНКИСТА" maxlength="16">
         <br>
         <button id="playBtn" class="play-btn">🚀 В БОЙ</button>
     </div>
 </div>
 
-<div id="gameUI" style="display: none;">
-    <div class="stats">
-        🎖️ <span id="playerName">Танкист</span> | Lv.<span id="level">1</span>
-        <span id="statPoints"> (🔧 0 очков)</span><br>
-        ❤️ <span id="hp">100</span>%
-        | 💥 урон: <span id="damageStat">10</span>
-        | ⚡ перезарядка: <span id="reloadStat">1.0</span>
-    </div>
+<!-- Левая джойстик (движение) -->
+<div id="joystickMove" class="joystick" style="display: none;">
+    <div class="joystick-base"></div>
+    <div id="moveThumb" class="joystick-thumb"></div>
 </div>
 
-<div class="upgrade-panel" id="upgradePanel" style="display: none;">
-    <button class="upgrade-btn" data-stat="damage">💥 Урон +2</button>
-    <button class="upgrade-btn" data-stat="reload">⚡ Перезарядка -0.08с</button>
-    <button class="upgrade-btn" data-stat="speed">🏃 Скорость +0.3</button>
-    <button class="upgrade-btn" data-stat="maxHp">❤️ Здоровье +10</button>
+<!-- Правый джойстик (стрельба) -->
+<div id="joystickShoot" class="joystick" style="display: none;">
+    <div class="joystick-base"></div>
+    <div id="shootThumb" class="joystick-thumb"></div>
 </div>
 
-<div class="class-panel" id="classPanel" style="display: none;">
-    <button class="class-btn" data-class="basic">🔫 Базовый</button>
-    <button class="class-btn" data-class="machine">⚙️ Пулемёт</button>
-    <button class="class-btn" data-class="destroyer">💣 Разрушитель</button>
-    <button class="class-btn" data-class="sniper">🎯 Снайпер</button>
+<!-- Панель прокачки -->
+<div id="upgradePanel" class="upgrade-panel" style="display: none;">
+    <button class="upgrade-btn" data-stat="speed">🏃 Скорость</button>
+    <button class="upgrade-btn" data-stat="reload">⚡ Перезарядка</button>
+    <button class="upgrade-btn" data-stat="damage">💥 Урон</button>
+    <button class="upgrade-btn" data-stat="penetration">🎯 Пробитие</button>
+    <button class="upgrade-btn" data-stat="maxHp">❤️ Здоровье</button>
+</div>
+
+<!-- Очки прокачки -->
+<div id="skillPointsDisplay" class="skill-points" style="display: none;">🔧 Очки: 0</div>
+
+<!-- Статистика -->
+<div class="stats-panel" id="statsPanel" style="display: none;">
+    <div>Lv.<span id="levelValue">1</span> | ❤️ <span id="hpValue">100</span>%</div>
+    <div>💥 <span id="damageStat">12</span> | ⚡ <span id="reloadStat">0.8</span></div>
+</div>
+
+<!-- Таблица лидеров -->
+<div id="leaderboard" class="leaderboard" style="display: none;">
+    <h4>🏆 ЛИДЕРЫ</h4>
+    <div id="leaderboardList">1. Вы — 0 XP</div>
+</div>
+
+<!-- Мини-карта -->
+<div id="minimap" class="minimap" style="display: none;">
+    <canvas id="minimapCanvas" width="120" height="120"></canvas>
 </div>
 
 <canvas id="canvas"></canvas>
