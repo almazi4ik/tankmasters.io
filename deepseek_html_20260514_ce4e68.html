@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TankMasters.io — много пушек и классов</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            background: #0a0f1a;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, monospace;
+        }
+        
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        
+        /* Меню */
+        #menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: 0.3s;
+        }
+        
+        .menu-card {
+            background: linear-gradient(145deg, #1a2a3a, #0a121f);
+            border-radius: 40px;
+            padding: 40px 50px;
+            text-align: center;
+            border: 2px solid #ffaa44;
+            box-shadow: 0 0 50px rgba(255,170,68,0.3);
+            max-width: 500px;
+        }
+        
+        h1 {
+            font-size: 48px;
+            background: linear-gradient(135deg, #ffaa44, #ff6644);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .sub {
+            color: #88aacc;
+            margin-bottom: 30px;
+        }
+        
+        .nick-input {
+            background: #0a0f1e;
+            border: 2px solid #ffaa44;
+            padding: 12px 20px;
+            font-size: 18px;
+            color: #ffcc88;
+            border-radius: 40px;
+            width: 250px;
+            text-align: center;
+            outline: none;
+            margin: 20px 0;
+        }
+        
+        .play-btn {
+            background: linear-gradient(135deg, #ffaa44, #ff6644);
+            border: none;
+            padding: 12px 35px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .play-btn:hover { transform: scale(1.05); }
+        
+        /* Игровой UI */
+        #gameUI {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .stats {
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 30px;
+            color: #ffdd99;
+            font-size: 14px;
+        }
+        
+        .upgrade-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        
+        .upgrade-btn {
+            background: #2a3a4a;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            color: #ffcc88;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.1s;
+        }
+        
+        .upgrade-btn:hover { background: #ffaa44; color: #1a1a2e; transform: scale(1.02); }
+        
+        .class-panel {
+            position: fixed;
+            top: 100px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        
+        .class-btn {
+            background: #2a3a4a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: #ffcc88;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .class-btn.active { background: #ffaa44; color: black; }
+        
+        @media (max-width: 800px) {
+            .stats { font-size: 10px; padding: 6px 12px; }
+            .upgrade-btn { padding: 5px 10px; font-size: 10px; }
+            .class-btn { font-size: 9px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="menu">
+    <div class="menu-card">
+        <h1>⚡ TANKMASTERS.IO ⚡</h1>
+        <div class="sub">50+ пушек • 8 классов • Прокачка</div>
+        <input type="text" id="nickInput" class="nick-input" placeholder="ИМЯ ТАНКИСТА" maxlength="16">
+        <br>
+        <button id="playBtn" class="play-btn">🚀 В БОЙ</button>
+        <div style="margin-top: 25px; font-size: 11px; opacity: 0.6;">
+            🔫 ПКМ/ЛКМ — стрельба | 📈 Очки улучшения — прокачка
+        </div>
+    </div>
+</div>
+
+<div id="gameUI" style="display: none;">
+    <div class="stats">
+        🎖️ <span id="playerName">Танкист</span> | Lv.<span id="level">1</span>
+        <span id="statPoints"> (🔧 0 очков)</span><br>
+        ❤️ <span id="hp">100</span>%
+        <span id="statStr"> | 💥 урон: <span id="damageStat">10</span></span>
+        <span id="statSpd"> | ⚡ перезарядка: <span id="reloadStat">1.0</span></span>
+        <span id="statPen"> | 🎯 пробитие: <span id="penStat">1</span></span>
+    </div>
+</div>
+
+<div class="upgrade-panel" id="upgradePanel" style="display: none;">
+    <button class="upgrade-btn" data-stat="damage">💥 Урон +2</button>
+    <button class="upgrade-btn" data-stat="reload">⚡ Перезарядка -0.08с</button>
+    <button class="upgrade-btn" data-stat="penetration">🎯 Пробитие +1</button>
+    <button class="upgrade-btn" data-stat="speed">🏃 Скорость +0.3</button>
+    <button class="upgrade-btn" data-stat="maxHp">❤️ Здоровье +10</button>
+</div>
+
+<div class="class-panel" id="classPanel" style="display: none;">
+    <button class="class-btn" data-class="basic">🔫 Базовый</button>
+    <button class="class-btn" data-class="sniper">🎯 Снайпер</button>
+    <button class="class-btn" data-class="machine">⚙️ Пулемёт</button>
+    <button class="class-btn" data-class="destroyer">💣 Разрушитель</button>
+    <button class="class-btn" data-class="gunner">🔫 Ганнер</button>
+    <button class="class-btn" data-class="flamethrower">🔥 Огнемёт</button>
+    <button class="class-btn" data-class="laser">⚡ Лазер</button>
+    <button class="class-btn" data-class="rocket">🚀 Ракетчик</button>
+    <button class="class-btn" data-class="drone">🛸 Дроновод</button>
+    <button class="class-btn" data-class="healer">💚 Лекарь</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="game.js"></script>
+</body>
+</html>
