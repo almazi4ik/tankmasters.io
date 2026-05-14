@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TankMasters.io — Diep.io style</title>
+    <title>TankMasters.io — танки, пушки, полигоны</title>
     <style>
         * {
             margin: 0;
@@ -30,18 +30,17 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.95);
-            backdrop-filter: blur(12px);
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(10px);
             z-index: 100;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: 0.3s;
         }
         
         .menu-card {
             background: linear-gradient(145deg, #1a2a3a, #0a121f);
-            border-radius: 50px;
+            border-radius: 40px;
             padding: 40px 50px;
             text-align: center;
             border: 2px solid #ffaa44;
@@ -55,8 +54,6 @@
             background-clip: text;
             color: transparent;
             margin-bottom: 10px;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 36px;
         }
         
         .sub {
@@ -90,7 +87,7 @@
         
         .play-btn:hover { transform: scale(1.05); }
         
-        /* Игровой UI */
+        /* UI */
         #gameUI {
             position: fixed;
             top: 15px;
@@ -109,34 +106,9 @@
             border-radius: 30px;
             color: #ffdd99;
             font-size: 14px;
-            font-weight: bold;
-            min-width: 250px;
         }
         
-        .stat-row {
-            margin: 5px 0;
-        }
-        
-        .exp-bar, .hp-bar {
-            width: 100%;
-            height: 6px;
-            background: #333;
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 5px 0;
-        }
-        
-        .exp-fill, .hp-fill {
-            height: 100%;
-            background: #ffaa44;
-            width: 0%;
-            transition: width 0.2s;
-        }
-        
-        .hp-fill { background: #ff6644; }
-        
-        /* Панель улучшений */
-        #upgradePanel {
+        .upgrade-panel {
             position: fixed;
             bottom: 20px;
             left: 20px;
@@ -144,10 +116,10 @@
             background: rgba(0,0,0,0.8);
             backdrop-filter: blur(8px);
             border-radius: 30px;
-            padding: 12px 20px;
+            padding: 15px 20px;
             display: flex;
             justify-content: center;
-            gap: 12px;
+            gap: 15px;
             flex-wrap: wrap;
             z-index: 10;
             pointer-events: auto;
@@ -161,77 +133,36 @@
             color: #ffcc88;
             cursor: pointer;
             font-weight: bold;
-            transition: 0.1s;
         }
         
-        .upgrade-btn:hover { background: #ffaa44; color: #1a1a2e; transform: scale(1.02); }
+        .upgrade-btn:hover { background: #ffaa44; color: #1a1a2e; }
         
-        /* Панель эволюции */
-        #evolutionPanel {
+        .class-panel {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.92);
-            backdrop-filter: blur(12px);
-            z-index: 200;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .evolution-container {
-            background: linear-gradient(145deg, #1a2a3a, #0a121f);
-            padding: 30px 40px;
-            border-radius: 50px;
-            border: 2px solid #ffaa44;
-            text-align: center;
-        }
-        
-        .evolution-container h2 {
-            color: #ffaa44;
-            margin-bottom: 25px;
-            font-size: 28px;
-        }
-        
-        .evolution-buttons {
+            top: 100px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 10px;
             display: flex;
-            gap: 30px;
-            justify-content: center;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+            pointer-events: auto;
         }
         
-        .evolution-btn {
+        .class-btn {
             background: #2a3a4a;
             border: none;
-            padding: 20px 25px;
-            border-radius: 30px;
-            width: 180px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: #ffcc88;
             cursor: pointer;
-            transition: 0.2s;
-            color: white;
-            text-align: center;
+            font-size: 11px;
         }
         
-        .evolution-btn:hover {
-            background: #ffaa44;
-            transform: scale(1.05);
-            color: black;
-        }
-        
-        .evo-icon { font-size: 48px; margin-bottom: 10px; }
-        .evo-name { font-size: 20px; font-weight: bold; }
-        .evo-desc { font-size: 12px; opacity: 0.8; margin: 5px 0; }
-        .evo-stats { font-size: 10px; margin-top: 8px; color: #ffaa44; }
-        
-        @media (max-width: 700px) {
-            .stats { font-size: 10px; padding: 6px 12px; min-width: 180px; }
-            .upgrade-btn { padding: 5px 10px; font-size: 10px; }
-            .evolution-btn { width: 140px; padding: 15px; }
-            .evo-icon { font-size: 36px; }
-            .evo-name { font-size: 16px; }
-        }
+        .class-btn.active { background: #ffaa44; color: black; }
     </style>
 </head>
 <body>
@@ -239,40 +170,35 @@
 <div id="menu">
     <div class="menu-card">
         <h1>⚡ TANKMASTERS.IO ⚡</h1>
-        <div class="sub">Basic → Sniper / Twin на 15 уровне</div>
+        <div class="sub">танки • пушки • полигоны</div>
         <input type="text" id="nickInput" class="nick-input" placeholder="ИМЯ ТАНКИСТА" maxlength="16">
         <br>
         <button id="playBtn" class="play-btn">🚀 В БОЙ</button>
-        <div style="margin-top: 20px; font-size: 11px; opacity: 0.6;">
-            🖱️ Мышь — движение | 🔫 ЛКМ/ПКМ — стрельба | 📈 Очки — прокачка
-        </div>
     </div>
 </div>
 
 <div id="gameUI" style="display: none;">
     <div class="stats">
-        <div class="stat-row">🎖️ <span id="playerName">Танкист</span> | Lv.<span id="level">1</span> | <span style="color:#ffaa44;"><span id="tankName">Basic</span></span></div>
-        <div class="stat-row">❤️ HP: <span id="hpValue">100</span> / <span id="maxHpValue">100</span></div>
-        <div class="hp-bar"><div class="hp-fill" id="hpBarFill"></div></div>
-        <div class="stat-row">⭐ Опыт: Lv.<span id="nextLevel">2</span></div>
-        <div class="exp-bar"><div class="exp-fill" id="expBarFill"></div></div>
-        <div class="stat-row">🔧 очки улучшений: <span id="statPointsSpan">0</span></div>
+        🎖️ <span id="playerName">Танкист</span> | Lv.<span id="level">1</span>
+        <span id="statPoints"> (🔧 0 очков)</span><br>
+        ❤️ <span id="hp">100</span>%
+        | 💥 урон: <span id="damageStat">10</span>
+        | ⚡ перезарядка: <span id="reloadStat">1.0</span>
     </div>
 </div>
 
-<div id="upgradePanel" style="display: none;">
+<div class="upgrade-panel" id="upgradePanel" style="display: none;">
     <button class="upgrade-btn" data-stat="damage">💥 Урон +2</button>
-    <button class="upgrade-btn" data-stat="reload">⚡ Перезарядка -0.05с</button>
-    <button class="upgrade-btn" data-stat="penetration">🎯 Пробитие +1</button>
+    <button class="upgrade-btn" data-stat="reload">⚡ Перезарядка -0.08с</button>
     <button class="upgrade-btn" data-stat="speed">🏃 Скорость +0.3</button>
-    <button class="upgrade-btn" data-stat="hp">❤️ Здоровье +15</button>
+    <button class="upgrade-btn" data-stat="maxHp">❤️ Здоровье +10</button>
 </div>
 
-<div id="evolutionPanel">
-    <div class="evolution-container">
-        <h2>🌟 ВЫБЕРИТЕ ЭВОЛЮЦИЮ 🌟</h2>
-        <div class="evolution-buttons" id="evolutionButtons"></div>
-    </div>
+<div class="class-panel" id="classPanel" style="display: none;">
+    <button class="class-btn" data-class="basic">🔫 Базовый</button>
+    <button class="class-btn" data-class="machine">⚙️ Пулемёт</button>
+    <button class="class-btn" data-class="destroyer">💣 Разрушитель</button>
+    <button class="class-btn" data-class="sniper">🎯 Снайпер</button>
 </div>
 
 <canvas id="canvas"></canvas>
